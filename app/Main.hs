@@ -1,6 +1,7 @@
 module Main where
 
-import Lib
+import Board (initialBoard, Color(Red))
+import Lib (play)
 
 main :: IO ()
-main = someFunc
+main = play initialBoard Red
