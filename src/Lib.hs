@@ -11,38 +11,40 @@ import Board (
   possibleMoves, makeMove, rows, columns, checkWin, valuation
     )
 
-play :: Board -> Color -> IO ()
-play b color =
+import AI
+
+play :: Board -> IO ()
+play b@(Board board h _) =
   do let moves = possibleMoves b
      displayBoard b
-     putStrLn $ "Valuation of Red: " ++ (show $ valuation b Red)
-     putStrLn $ "Valuation of Yellow: " ++ (show $ valuation b Yellow)
+     -- putStrLn $ "Evaluate: " ++ (show $ evaluate 5 b)
+     putStrLn $ "Valuation of Red: " ++ (show $ valuation (Board board h Yellow))
+     putStrLn $ "Valuation of Yellow: " ++ (show $ valuation (Board board h Red))
      putStr "Possible Moves: "
      putStrLn $ unwords $ map show moves
      moveString <- getLine
      let move = (read moveString) :: Int
          func = if (move `elem` moves) then performMove else invalidMove
-     func b color move
+     func b move
 
-performMove :: Board -> Color -> Column -> IO ()
-performMove b color col =
-  do let nBoard = makeMove b color col
-         nColor = if color == Red then Yellow else Red
-         hasWon = checkWin nBoard color
-     if hasWon then showVictory nBoard color else play nBoard nColor
+performMove :: Board -> Column -> IO ()
+performMove b col =
+  do let nBoard = makeMove b col
+         hasWon = checkWin nBoard
+     if hasWon then showVictory nBoard else play nBoard
 
-invalidMove :: Board -> Color -> Column -> IO ()
-invalidMove b color c =
+invalidMove :: Board -> Column -> IO ()
+invalidMove b c =
   do putStrLn $ "You have entered an invalid move: " ++ (show c)
      putStrLn "Please choose one of the possible moves."
-     play b color
+     play b
 
 displayBoard :: Board -> IO ()
-displayBoard (Board b _) = let strBoard = [[if z == Red then "1" else if z == Yellow then "2" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
-                               rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
-                               output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
-                           in putStrLn $ rowSep ++ output ++ rowSep
+displayBoard (Board b _ _) = let strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
+                                 rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
+                                 output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
+                             in putStrLn $ rowSep ++ output ++ rowSep
 
-showVictory :: Board -> Color -> IO ()
-showVictory b c = do displayBoard b
-                     putStrLn ((show c) ++ " has won...")
+showVictory :: Board -> IO ()
+showVictory b@(Board _ _ c) = do displayBoard b
+                                 putStrLn ((show c) ++ " has lost...")
