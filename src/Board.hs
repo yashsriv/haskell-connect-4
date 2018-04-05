@@ -9,22 +9,26 @@ module Board (
   makeMove,
   ) where
 
-maxHeight = 6
-maxCol = 7
+import qualified Data.Map.Strict as Map
+
+rows = 6
+columns = 7
+
+type Column = Int
+type Row = Int
+type Coords = (Column, Row)
 
 -- Enumeration for the 3 Colors
 data Color = Empty | Red | Yellow deriving (Eq)
 
 -- Board is just a 2 Dimensional List with heights
-data Board = Board [[Color]] [Int]
+data Board = Board (Map.Map Coords Color) (Map.Map Column Row)
 
-type Column = Int
-
-initialBoard = Board (replicate maxCol (replicate maxHeight Empty)) (replicate maxCol 0)
+initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]]) (Map.fromList [ (col, 0) | col <- [1..columns]])
 
 -- Returns Columns whose topmost row is still not filled
 possibleMoves :: Board -> [Column]
-possibleMoves (Board _ heights)= map (fst) $ filter (\(_, h) -> h /= maxHeight) $ zip [1..] heights
+possibleMoves (Board _ heights)= [x | x <- [1..columns], (heights ! (x, rows)) == Empty]
 
 -- Update the Board
 makeMove :: Board -> Color -> Column -> Board
