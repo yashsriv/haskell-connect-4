@@ -8,13 +8,15 @@ import Data.Map.Strict((!))
 
 import Board (
   Board (Board), Color(Red, Yellow), Column,
-  possibleMoves, makeMove, rows, columns
+  possibleMoves, makeMove, rows, columns, checkWin, valuation
     )
 
 play :: Board -> Color -> IO ()
 play b color =
   do let moves = possibleMoves b
      displayBoard b
+     putStrLn $ "Valuation of Red: " ++ (show $ valuation b Red)
+     putStrLn $ "Valuation of Yellow: " ++ (show $ valuation b Yellow)
      putStr "Possible Moves: "
      putStrLn $ unwords $ map show moves
      moveString <- getLine
@@ -24,10 +26,10 @@ play b color =
 
 performMove :: Board -> Color -> Column -> IO ()
 performMove b color col =
-  do let nboard = makeMove b color col
-         ncolor = if color == Red then Yellow else Red
-     -- Check for win condition
-     play nboard ncolor
+  do let nBoard = makeMove b color col
+         nColor = if color == Red then Yellow else Red
+         hasWon = checkWin nBoard color
+     if hasWon then showVictory nBoard color else play nBoard nColor
 
 invalidMove :: Board -> Color -> Column -> IO ()
 invalidMove b color c =
@@ -40,3 +42,7 @@ displayBoard (Board b _) = let strBoard = [[if z == Red then "1" else if z == Ye
                                rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
                                output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
                            in putStrLn $ rowSep ++ output ++ rowSep
+
+showVictory :: Board -> Color -> IO ()
+showVictory b c = do displayBoard b
+                     putStrLn ((show c) ++ " has won...")
