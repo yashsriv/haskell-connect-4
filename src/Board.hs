@@ -71,7 +71,7 @@ valuationDiagRight :: Board -> Color -> Int
 valuationDiagRight (Board board _) color = sum [scoreQuad color [board ! (x + i, y + i) | i <- [0..3]] | y <- [1..(rows - 4)], x <- [1..(columns - 4)]]
 
 valuationDiagLeft :: Board -> Color -> Int
-valuationDiagLeft (Board board _) color = sum [scoreQuad color [board ! (x - i, y - i) | i <- [0..3]] | y <- [4..rows], x <- [4..columns]]
+valuationDiagLeft (Board board _) color = sum [scoreQuad color [board ! (x + i, y - i) | i <- [0..3]] | y <- [4..rows], x <- [1..(columns - 4)]]
 
 scoreQuad :: Color -> [Color] -> Int
 scoreQuad color colors = if (and [ c == Empty || c == color | c <- colors])
