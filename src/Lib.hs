@@ -3,10 +3,12 @@ module Lib
     ) where
 
 import Data.List (intercalate, transpose)
+import qualified Data.Map.Strict as Map
+import Data.Map.Strict((!))
 
 import Board (
   Board (Board), Color(Red, Yellow), Column,
-  possibleMoves, makeMove, maxCol
+  possibleMoves, makeMove, rows, columns
     )
 
 play :: Board -> Color -> IO ()
@@ -34,7 +36,7 @@ invalidMove b color c =
      play b color
 
 displayBoard :: Board -> IO ()
-displayBoard (Board b _) = let strBoard = map (map (\x -> if x == Red then "1" else if x == Yellow then "2" else " ")) $ reverse $ transpose b
-                               rowSep = "\n" ++ (concat $ replicate maxCol "+---") ++ "+\n"
+displayBoard (Board b _) = let strBoard = [[if z == Red then "1" else if z == Yellow then "2" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
+                               rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
                                output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
                            in putStrLn $ rowSep ++ output ++ rowSep
