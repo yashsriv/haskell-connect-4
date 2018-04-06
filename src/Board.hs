@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module Board (
   rows,
   columns,
@@ -33,7 +35,9 @@ initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- 
 
 -- Returns Columns whose topmost row is still not filled
 possibleMoves :: Board -> [Column]
-possibleMoves (Board _ heights _)= [x | x <- [1..columns], (heights ! x) /= rows]
+possibleMoves b@(Board _ heights _)
+  | checkWin b = []
+  | otherwise = [x | x <- [1..columns], (heights ! x) /= rows]
 
 -- Update the Board
 makeMove :: Board -> Column -> Board
@@ -81,7 +85,8 @@ valuationDiagLeft (Board board _ color) = sum [scoreQuad color [board ! (x + i, 
 
 scoreQuad :: Color -> [Color] -> Int
 scoreQuad color colors = if (and [ c == Empty || c == color | c <- colors])
-                         then if (length $ filter (== color) colors) == 3 then 1 else 0
+                         then case (length $ filter (== color) colors) of 3 -> 1
+                                                                          _ -> 0
                          else 0
 
 -- Generate all possible next move positions
@@ -89,6 +94,8 @@ scoreQuad color colors = if (and [ c == Empty || c == color | c <- colors])
 -- moves :: Board -> Color -> [Board]
 
 instance GamePosition Board where
-  -- moves :: Board -> [Board]
+  moves :: Board -> [Board]
   moves b = map (makeMove b) $ possibleMoves b
-  static b@(Board board h c) = if (checkWin b) then 100 else (valuation b) - (valuation (Board board h (opp c)))
+
+  static :: Board -> Int
+  static b@(Board board h c) = if (checkWin b) then -100 else (valuation b) - (valuation (Board board h (opp c)))

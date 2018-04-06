@@ -17,7 +17,7 @@ play :: Board -> IO ()
 play b@(Board board h _) =
   do let moves = possibleMoves b
      displayBoard b
-     -- putStrLn $ "Evaluate: " ++ (show $ evaluate 5 b)
+     putStrLn $ "Evaluate: " ++ (show $ negmax 5 b)
      putStrLn $ "Valuation of Red: " ++ (show $ valuation (Board board h Yellow))
      putStrLn $ "Valuation of Yellow: " ++ (show $ valuation (Board board h Red))
      putStr "Possible Moves: "

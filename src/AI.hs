@@ -1,9 +1,11 @@
 module AI where
 
+import Data.List (maximumBy, minimumBy)
+import Data.Ord (comparing)
+
 class GamePosition a where
   moves :: a -> [a]
   static :: a -> Int
-
 
 data Tree a = Node a [Tree a]
 
@@ -28,34 +30,12 @@ prune :: Int -> Tree a -> Tree a
 prune 0 (Node n sub) = Node n []
 prune k (Node n sub) = Node n (map (prune (k-1)) sub)
 
-maximise' :: Ord a => Tree a -> [a]
-maximise' (Node n []) = [n]
-maximise' (Node n ns)
-             = mapmin (map minimise' ns)
-
-minimise' :: Ord a => Tree a -> [a]
-minimise' (Node n []) = [n]
-minimise' (Node n ns)
-             = mapmax (map maximise' ns)
-
-mapmin :: Ord a => [[a]] -> [a]
-mapmin (nums:rest) = n:(omit n rest)
-   where n = minimum nums
-
-mapmax :: Ord a => [[a]] -> [a]
-mapmax (nums:rest) = n:(omit n rest)
-  where n = maximum nums
-
-omit :: Ord a => a -> [[a]] -> [a]
-omit n [] = []
-omit n (nums:rest) =
-  if minleq nums n then omit n rest
-                   else (minimum nums):(omit n rest)
-
-minleq :: Ord a => [a] -> a -> Bool
-minleq [] n = False
-minleq (num:nums) n = if num <= n then True
-                         else minleq nums n
-
 evaluate :: GamePosition a => Int -> a -> Int
-evaluate depth = maximum . maximise' . maptree static . prune depth . gametree
+evaluate depth = maximise . maptree static . prune depth . gametree
+
+
+negmax :: GamePosition a => Int -> a -> (Maybe Int, Int)
+negmax depth b
+ | depth == 0 = (Nothing, static b)
+ | null (moves b) = (Nothing, static b)
+ | otherwise = (\(a, (b, c)) -> (Just a, c)) $ maximumBy (comparing (snd . snd)) $ zip [1..] $ map (\(a, b) -> (a, negate b)) $ map (negmax (depth - 1)) (moves b)
