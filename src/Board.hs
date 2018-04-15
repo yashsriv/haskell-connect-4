@@ -13,6 +13,7 @@ module Board (
   valuation,
   ) where
 
+import Data.List (intercalate, transpose)
 import qualified Data.Map.Strict as Map
 import Data.Map.Strict((!))
 
@@ -51,37 +52,59 @@ opp c
   | c == Red = Yellow
   | c == Yellow = Red
 
+
+verticals :: Board -> [[Color]]
+verticals (Board board _ _) = [ [board ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
+
+horizontals :: Board -> [[Color]]
+horizontals (Board board _ _) = [ [board ! (x + i, y) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..rows]]
+
+rdiags :: Board -> [[Color]]
+rdiags (Board board _ _) = [ [board ! (x + i, y + i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..(rows - 3)]]
+
+ldiags :: Board -> [[Color]]
+ldiags (Board board _ _) = [ [board ! (x + i, y - i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [4..rows]]
+
 -- Check if a player of particular color has won
 checkWin :: Board -> Bool
 checkWin board = or [f board | f <- [checkWinCol, checkWinRow, checkWinDiagRight, checkWinDiagLeft]]
 
+-- check if any quad exists such that all elements of a quad are of the opposite color.
+-- If yes then the other player won and reached this state
+checkWin' :: (Board -> [[Color]]) -> Board -> Bool
+checkWin' f b@(Board board _ color) = or $ map (and . map ((==) (opp color))) $ f b
+
 checkWinCol :: Board -> Bool
-checkWinCol (Board board _ color) = or [and [(board ! (x, y + i)) == (opp color) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
+checkWinCol = checkWin' verticals
 
 checkWinRow :: Board -> Bool
-checkWinRow (Board board _ color) = or [and [(board ! (x + i, y)) == (opp color) | i <- [0..3]] | y <- [1..rows], x <- [1..(columns - 3)]]
+checkWinRow = checkWin' horizontals
 
 checkWinDiagRight :: Board -> Bool
-checkWinDiagRight (Board board _ color) = or [and [(board ! (x + i, y + i)) == (opp color) | i <- [0..3]] | y <- [1..(rows - 3)], x <- [1..(columns - 3)]]
+checkWinDiagRight = checkWin' rdiags
 
 checkWinDiagLeft :: Board -> Bool
-checkWinDiagLeft (Board board _ color) = or [and [(board ! (x + i, y - i)) == (opp color) | i <- [0..3]] | y <- [4..rows], x <- [1..(columns-3)]]
+checkWinDiagLeft = checkWin' ldiags
 
 -- Calculate value of a particular board w.r.t to Color
 valuation :: Board -> Int
 valuation board = sum [f board | f <- [valuationCol, valuationRow, valuationDiagRight, valuationDiagLeft]]
 
+-- Calculate score of each quad set and return the sum
+valuation' :: (Board -> [[Color]]) -> Board -> Int
+valuation' f b@(Board board _ color) = sum $ map (scoreQuad color) $ f b
+
 valuationCol :: Board -> Int
-valuationCol (Board board _ color) = sum [ scoreQuad color [board ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
+valuationCol = valuation' verticals
 
 valuationRow :: Board -> Int
-valuationRow (Board board _ color) = sum [scoreQuad color [board ! (x + i, y) | i <- [0..3]] | y <- [1..rows], x <- [1..(columns - 3)]]
+valuationRow = valuation' horizontals
 
 valuationDiagRight :: Board -> Int
-valuationDiagRight (Board board _ color) = sum [scoreQuad color [board ! (x + i, y + i) | i <- [0..3]] | y <- [1..(rows - 3)], x <- [1..(columns - 3)]]
+valuationDiagRight = valuation' rdiags
 
 valuationDiagLeft :: Board -> Int
-valuationDiagLeft (Board board _ color) = sum [scoreQuad color [board ! (x + i, y - i) | i <- [0..3]] | y <- [4..rows], x <- [1..(columns - 3)]]
+valuationDiagLeft = valuation' ldiags
 
 scoreQuad :: Color -> [Color] -> Int
 scoreQuad color colors = if (and [ c == Empty || c == color | c <- colors])
@@ -99,3 +122,10 @@ instance GamePosition Board where
 
   static :: Board -> Int
   static b@(Board board h c) = if (checkWin b) then -100 else (valuation b) - (valuation (Board board h (opp c)))
+
+instance Show Board where
+  show :: Board -> String
+  show (Board b _ _) = let strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
+                           rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
+                           output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
+                       in rowSep ++ output ++ rowSep

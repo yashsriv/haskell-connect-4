@@ -1,41 +1,41 @@
 module AI where
 
+import Control.Concurrent (threadDelay)
 import Data.List (maximumBy, minimumBy)
 import Data.Ord (comparing)
+import System.Random
 
 class GamePosition a where
   moves :: a -> [a]
   static :: a -> Int
 
-data Tree a = Node a [Tree a]
-
-reptree :: (a -> [a]) -> a -> Tree a
-reptree f x = Node x (map (reptree f) (f x))
-
-gametree :: GamePosition a => a -> Tree a
-gametree p = reptree moves p
-
-maptree :: (a -> Int) -> Tree a -> Tree Int
-maptree f (Node x xs) = Node (f x) (map (maptree f) xs)
-
-maximise :: Tree Int -> Int
-maximise (Node n [])  = n
-maximise (Node n sub) = maximum (map minimise sub)
-
-minimise :: Tree Int -> Int
-minimise (Node n [])  = n
-minimise (Node n sub) = minimum (map maximise sub)
-
-prune :: Int -> Tree a -> Tree a
-prune 0 (Node n sub) = Node n []
-prune k (Node n sub) = Node n (map (prune (k-1)) sub)
-
-evaluate :: GamePosition a => Int -> a -> Int
-evaluate depth = maximise . maptree static . prune depth . gametree
-
-
 negmax :: GamePosition a => Int -> a -> (Maybe Int, Int)
 negmax depth b
  | depth == 0 = (Nothing, static b)
  | null (moves b) = (Nothing, static b)
- | otherwise = (\(a, (b, c)) -> (Just a, c)) $ maximumBy (comparing (snd . snd)) $ zip [1..] $ map (\(a, b) -> (a, negate b)) $ map (negmax (depth - 1)) (moves b)
+ | otherwise = let results = map (negmax (depth - 1)) (moves b)
+                   zipped = zip [1..] results
+                   best = maximumBy (comparing (negate . snd . snd)) zipped
+                   (moveNum, (_, score)) = best
+                in (Just moveNum, negate score)
+
+randomPick :: RandomGen g => [a] -> g -> (a, g)
+randomPick xs gen = let (index, gen') = randomR (0, (length xs) - 1) gen
+                    in (xs !! index, gen')
+
+ioplayer :: (Eq a, Read a, Show a) => [a] -> IO a
+ioplayer moves =
+  do putStr "Possible Moves: "
+     putStrLn $ unwords $ map show moves
+     putStrLn "Enter a valid move: "
+     moveString <- getLine
+     let move = read moveString
+     if (move `elem` moves)
+       then return move
+       else do putStrLn $ "You have entered an invalid move: " ++ (show move)
+               putStrLn "Please choose one of the possible moves."
+               ioplayer moves
+
+randplayer :: [a] -> IO a
+randplayer moves = do threadDelay 500000
+                      getStdRandom (randomPick moves)
