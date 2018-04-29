@@ -9,26 +9,43 @@ class GamePosition a where
   moves :: a -> [a]
   static :: a -> Int
 
-gatherMax :: [(Int, (Maybe Int, Int))] -> (Int, (Maybe Int, Int)) -> [(Int, (Maybe Int, Int))]
+-- We take maximum of the negative of the scores
+gatherMax :: [(Int, ((Maybe Int, Int), a))] -> (Int, ((Maybe Int, Int), a)) -> [(Int, ((Maybe Int, Int), a))]
 gatherMax [] x = x:[]
-gatherMax xs@((_, (_, bscore)):_) x@(_, (_, score)) =
+gatherMax xs@((_, ((_, bscore), _)):_) x@(_, ((_, score), _)) =
   if score == bscore
   then x:xs
   else if (score < bscore)
        then x:[]
        else xs
 
-negmax :: (GamePosition a) => Int -> a -> IO (Maybe Int, Int)
-negmax depth b
- | depth == 0 = return (Nothing, static b)
- | null (moves b) = return (Nothing, static b)
- | otherwise = do
-     results <- sequence $ map (negmax (depth - 1)) (moves b)
-     let zipped = zip [0..] results
+genRandom :: (RandomGen g) => g -> Int -> [StdGen] -> ([StdGen], g)
+genRandom orig 0 gs = (gs, orig)
+genRandom orig x gs = let (seed, orig') = random orig
+                          g = mkStdGen seed
+                      in genRandom orig' (x - 1) (g:gs)
+
+negmax :: (GamePosition a, RandomGen g) => Int -> a -> g -> ((Maybe Int, Int), g)
+negmax depth b gen
+ | depth == 0     = ((Nothing, static b), gen)
+ | null (moves b) = ((Nothing, static b), gen)
+ | otherwise =
+     -- All possible moves
+     let posMoves = moves b
+         -- Generate a list of random generators -> one to pass down to each move
+         (gens, gen') = genRandom gen (length posMoves) []
+         -- zipWith is used to pass corresponding generator to corresponding move
+         results = zipWith (\g -> \mov -> negmax (depth - 1) mov g) gens (moves b)
+         -- Associate move index with the results (i.e. playing which move will result in this)
+         zipped = zip [0..] results
+         -- Obtain subset of best scores
          bests = foldl gatherMax [] zipped
-     best <- getStdRandom (randomPick bests)
-     let (moveIndex, (_, score)) = best
-     return (Just moveIndex, negate score)
+         -- Randomly pick any move of the best moves
+         (best, gen'') = randomPick bests gen'
+         -- Extract the move index and the score associated with the move
+         (moveIndex, ((_, score), _)) = best
+         -- Return move index, negative of the score and the modified generator
+     in ((Just moveIndex, negate score), gen'')
 
 randomPick :: RandomGen g => [a] -> g -> (a, g)
 randomPick xs gen = let (index, gen') = randomR (0, (length xs) - 1) gen
@@ -54,5 +71,5 @@ randplayer moves _ = do threadDelay 500000
 negmaxplayer :: GamePosition b => Int -> [a] -> b -> IO a
 negmaxplayer depth moves b =
   do
-    (Just index, _) <- negmax depth b
+    (Just index, _) <- getStdRandom (negmax depth b)
     return $ moves !! index
