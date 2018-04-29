@@ -15,8 +15,8 @@ module Board (
   ) where
 
 import Data.List (intercalate, transpose)
-import qualified Data.Map.Strict as Map
-import Data.Map.Strict((!))
+import qualified Data.Map.Strict as Map (insert, fromList)
+import Data.Map.Strict((!), Map)
 
 import AI
 
@@ -31,7 +31,7 @@ type Coords = (Column, Row)
 data Color = Empty | Red | Yellow | Both deriving (Eq, Show)
 
 -- Board is just a 2 Dimensional List with heights
-data Board = Board (Map.Map Coords Color) (Map.Map Column Row) Color Color
+data Board = Board (Map Coords Color) (Map Column Row) Color Color
 
 initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]]) (Map.fromList [ (col, 0) | col <- [1..columns]]) Red Empty
 
@@ -113,10 +113,6 @@ scoreQuad color colors = if (and [ c == Empty || c == color | c <- colors])
                          then case (length $ filter (== color) colors) of 3 -> 1
                                                                           _ -> 0
                          else 0
-
--- Generate all possible next move positions
--- Uses possibleMoves and makeMove
--- moves :: Board -> Color -> [Board]
 
 instance GamePosition Board where
   moves :: Board -> [Board]

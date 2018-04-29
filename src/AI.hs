@@ -1,9 +1,8 @@
 module AI where
 
-import Control.Concurrent (threadDelay)
-import Data.List (maximumBy, minimumBy)
-import Data.Ord (comparing)
 import System.Random
+
+import Util (randomPick)
 
 class GamePosition a where
   moves :: a -> [a]
@@ -39,18 +38,3 @@ negmax depth b gen
          (moveIndex, ((_, score), _)) = best     -- Extract the move index and the score associated with the move
      in ((Just moveIndex, negate score), gen'')  -- Return move index, negative of the score and the modified generator
 
-randomPick :: RandomGen g => [a] -> g -> (a, g)
-randomPick xs gen = let (index, gen') = randomR (0, (length xs) - 1) gen
-                    in (xs !! index, gen')
-
-ioplayer :: (Eq a, Read a, Show a, GamePosition b) => [a] -> b -> a -> IO a
-ioplayer moves b c = return c
-
-randplayer :: [a] -> b -> c -> IO a
-randplayer moves _ _ = getStdRandom (randomPick moves)
-
-negmaxplayer :: GamePosition b => Int -> [a] -> b -> c -> IO a
-negmaxplayer depth moves b _ =
-  do
-    (Just index, _) <- getStdRandom (negmax depth b)
-    return $ moves !! index
