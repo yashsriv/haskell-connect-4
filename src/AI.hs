@@ -30,22 +30,14 @@ negmax depth b gen
  | depth == 0     = ((Nothing, static b), gen)
  | null (moves b) = ((Nothing, static b), gen)
  | otherwise =
-     -- All possible moves
-     let posMoves = moves b
-         -- Generate a list of random generators -> one to pass down to each move
-         (gens, gen') = genRandom gen (length posMoves) []
-         -- zipWith is used to pass corresponding generator to corresponding move
-         results = zipWith (\g -> \mov -> negmax (depth - 1) mov g) gens (moves b)
-         -- Associate move index with the results (i.e. playing which move will result in this)
-         zipped = zip [0..] results
-         -- Obtain subset of best scores
-         bests = foldl gatherMax [] zipped
-         -- Randomly pick any move of the best moves
-         (best, gen'') = randomPick bests gen'
-         -- Extract the move index and the score associated with the move
-         (moveIndex, ((_, score), _)) = best
-         -- Return move index, negative of the score and the modified generator
-     in ((Just moveIndex, negate score), gen'')
+     let posMoves = moves b                      -- All possible moves
+         (gens, gen') = genRandom gen (length posMoves) []                      -- Generate a list of random generators - one to pass down to each move
+         results = zipWith (\g mov -> negmax (depth - 1) mov g) gens (moves b)  -- zipWith is used to pass corresponding generator to corresponding move
+         zipped = zip [0..] results              -- Associate move index with the results (i.e. playing which move will result in this)
+         bests = foldl gatherMax [] zipped       -- Obtain subset of best scores
+         (best, gen'') = randomPick bests gen'   -- Randomly pick any move of the best moves
+         (moveIndex, ((_, score), _)) = best     -- Extract the move index and the score associated with the move
+     in ((Just moveIndex, negate score), gen'')  -- Return move index, negative of the score and the modified generator
 
 randomPick :: RandomGen g => [a] -> g -> (a, g)
 randomPick xs gen = let (index, gen') = randomR (0, (length xs) - 1) gen
