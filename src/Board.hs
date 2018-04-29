@@ -3,7 +3,7 @@
 module Board (
   rows,
   columns,
-  Color (Red, Yellow),
+  Color (Empty, Red, Yellow, Both),
   Board (Board),
   Column,
   initialBoard,
@@ -11,6 +11,7 @@ module Board (
   makeMove,
   checkWin,
   valuation,
+  opp
   ) where
 
 import Data.List (intercalate, transpose)
@@ -27,25 +28,26 @@ type Row = Int
 type Coords = (Column, Row)
 
 -- Enumeration for the 3 Colors
-data Color = Empty | Red | Yellow deriving (Eq, Show)
+data Color = Empty | Red | Yellow | Both deriving (Eq, Show)
 
 -- Board is just a 2 Dimensional List with heights
-data Board = Board (Map.Map Coords Color) (Map.Map Column Row) Color
+data Board = Board (Map.Map Coords Color) (Map.Map Column Row) Color Color
 
-initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]]) (Map.fromList [ (col, 0) | col <- [1..columns]]) Red
+initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]]) (Map.fromList [ (col, 0) | col <- [1..columns]]) Red Empty
 
 -- Returns Columns whose topmost row is still not filled
 possibleMoves :: Board -> [Column]
-possibleMoves b@(Board _ heights _)
+possibleMoves b@(Board _ heights _ _)
   | checkWin b = []
   | otherwise = [x | x <- [1..columns], (heights ! x) /= rows]
 
 -- Update the Board
 makeMove :: Board -> Column -> Board
-makeMove (Board board heights color) col = let curHeight = heights ! col
-                                               nBoard = Map.insert (col, curHeight + 1) color board
-                                               nHeights = Map.insert col (curHeight + 1) heights
-                                           in Board nBoard nHeights (opp color)
+makeMove b@(Board board heights color k) col = let posMoves = possibleMoves b
+                                                   curHeight = heights ! col
+                                                   nBoard = Map.insert (col, curHeight + 1) color board
+                                                   nHeights = Map.insert col (curHeight + 1) heights
+                                               in if (col `elem` posMoves) then Board nBoard nHeights (opp color) k else b
 
 opp :: Color -> Color
 opp c
@@ -54,16 +56,16 @@ opp c
 
 
 verticals :: Board -> [[Color]]
-verticals (Board board _ _) = [ [board ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
+verticals (Board board _ _ _) = [ [board ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
 
 horizontals :: Board -> [[Color]]
-horizontals (Board board _ _) = [ [board ! (x + i, y) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..rows]]
+horizontals (Board board _ _ _) = [ [board ! (x + i, y) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..rows]]
 
 rdiags :: Board -> [[Color]]
-rdiags (Board board _ _) = [ [board ! (x + i, y + i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..(rows - 3)]]
+rdiags (Board board _ _ _) = [ [board ! (x + i, y + i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..(rows - 3)]]
 
 ldiags :: Board -> [[Color]]
-ldiags (Board board _ _) = [ [board ! (x + i, y - i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [4..rows]]
+ldiags (Board board _ _ _) = [ [board ! (x + i, y - i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [4..rows]]
 
 -- Check if a player of particular color has won
 checkWin :: Board -> Bool
@@ -72,7 +74,7 @@ checkWin board = or [f board | f <- [checkWinCol, checkWinRow, checkWinDiagRight
 -- check if any quad exists such that all elements of a quad are of the opposite color.
 -- If yes then the other player won and reached this state
 checkWin' :: (Board -> [[Color]]) -> Board -> Bool
-checkWin' f b@(Board board _ color) = or $ map (and . map ((==) (opp color))) $ f b
+checkWin' f b@(Board board _ color _) = or $ map (and . map ((==) (opp color))) $ f b
 
 checkWinCol :: Board -> Bool
 checkWinCol = checkWin' verticals
@@ -92,7 +94,7 @@ valuation board = sum [f board | f <- [valuationCol, valuationRow, valuationDiag
 
 -- Calculate score of each quad set and return the sum
 valuation' :: (Board -> [[Color]]) -> Board -> Int
-valuation' f b@(Board board _ color) = sum $ map (scoreQuad color) $ f b
+valuation' f b@(Board board _ color _) = sum $ map (scoreQuad color) $ f b
 
 valuationCol :: Board -> Int
 valuationCol = valuation' verticals
@@ -121,11 +123,11 @@ instance GamePosition Board where
   moves b = map (makeMove b) $ possibleMoves b
 
   static :: Board -> Int
-  static b@(Board board h c) = if (checkWin b) then -100 else (valuation b) - (valuation (Board board h (opp c)))
+  static b@(Board board h c k) = if (checkWin b) then -100 else (valuation b) - (valuation (Board board h (opp c) k))
 
 instance Show Board where
   show :: Board -> String
-  show (Board b _ _) = let strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
-                           rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
-                           output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
-                       in rowSep ++ output ++ rowSep
+  show (Board b _ _ _) = let strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
+                             rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
+                             output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
+                         in rowSep ++ output ++ rowSep

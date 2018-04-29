@@ -51,25 +51,14 @@ randomPick :: RandomGen g => [a] -> g -> (a, g)
 randomPick xs gen = let (index, gen') = randomR (0, (length xs) - 1) gen
                     in (xs !! index, gen')
 
-ioplayer :: (Eq a, Read a, Show a, GamePosition b) => [a] -> b -> IO a
-ioplayer moves b =
-  do putStr "Possible Moves: "
-     putStrLn $ unwords $ map show moves
-     putStrLn "Enter a valid move: "
-     moveString <- getLine
-     let move = read moveString
-     if (move `elem` moves)
-       then return move
-       else do putStrLn $ "You have entered an invalid move: " ++ (show move)
-               putStrLn "Please choose one of the possible moves."
-               ioplayer moves b
+ioplayer :: (Eq a, Read a, Show a, GamePosition b) => [a] -> b -> a -> IO a
+ioplayer moves b c = return c
 
-randplayer :: [a] -> b -> IO a
-randplayer moves _ = do threadDelay 500000
-                        getStdRandom (randomPick moves)
+randplayer :: [a] -> b -> c -> IO a
+randplayer moves _ _ = getStdRandom (randomPick moves)
 
-negmaxplayer :: GamePosition b => Int -> [a] -> b -> IO a
-negmaxplayer depth moves b =
+negmaxplayer :: GamePosition b => Int -> [a] -> b -> c -> IO a
+negmaxplayer depth moves b _ =
   do
     (Just index, _) <- getStdRandom (negmax depth b)
     return $ moves !! index
