@@ -1,6 +1,9 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Board (
+  board,
+  color,
+  winner,
   rows,
   columns,
   Color (Empty, Red, Yellow, Both),
@@ -27,27 +30,37 @@ type Column = Int
 type Row = Int
 type Coords = (Column, Row)
 
--- Enumeration for the 3 Colors
+-- Enumeration for the 3 Colors and 4 victory possibilities
 data Color = Empty | Red | Yellow | Both deriving (Eq, Show)
 
 -- Board is just a 2 Dimensional List with heights
-data Board = Board (Map Coords Color) (Map Column Row) Color Color
+data Board = Board { board :: (Map Coords Color)
+                   , heights :: (Map Column Row)
+                   , color :: Color
+                   , winner :: Color
+                   }
 
-initialBoard  = Board (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]]) (Map.fromList [ (col, 0) | col <- [1..columns]]) Red Empty
+initialBoard  = Board { board = (Map.fromList [ ((x, y), Empty) | x <- [1..columns], y <- [1..rows]])
+                      , heights = (Map.fromList [ (col, 0) | col <- [1..columns]])
+                      , color = Red
+                      , winner = Empty
+                      }
 
 -- Returns Columns whose topmost row is still not filled
 possibleMoves :: Board -> [Column]
-possibleMoves b@(Board _ heights _ _)
+possibleMoves b
   | checkWin b = []
-  | otherwise = [x | x <- [1..columns], (heights ! x) /= rows]
+  | otherwise = [x | x <- [1..columns], (heights' ! x) /= rows]
+                where
+                  heights' = heights b
 
 -- Update the Board
 makeMove :: Board -> Column -> Board
-makeMove b@(Board board heights color k) col = let posMoves = possibleMoves b
-                                                   curHeight = heights ! col
-                                                   nBoard = Map.insert (col, curHeight + 1) color board
-                                                   nHeights = Map.insert col (curHeight + 1) heights
-                                               in if (col `elem` posMoves) then Board nBoard nHeights (opp color) k else b
+makeMove b@(Board board heights c _) col = let posMoves = possibleMoves b
+                                               curHeight = heights ! col
+                                               nBoard = Map.insert (col, curHeight + 1) c board
+                                               nHeights = Map.insert col (curHeight + 1) heights
+                                           in if (col `elem` posMoves) then b { board = nBoard, heights = nHeights, color = opp c } else b
 
 opp :: Color -> Color
 opp c
@@ -56,16 +69,16 @@ opp c
 
 
 verticals :: Board -> [[Color]]
-verticals (Board board _ _ _) = [ [board ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
+verticals b = [ [board b ! (x, y + i) | i <- [0..3]] | x <- [1..columns], y <- [1..(rows - 3)]]
 
 horizontals :: Board -> [[Color]]
-horizontals (Board board _ _ _) = [ [board ! (x + i, y) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..rows]]
+horizontals b = [ [board b ! (x + i, y) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..rows]]
 
 rdiags :: Board -> [[Color]]
-rdiags (Board board _ _ _) = [ [board ! (x + i, y + i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..(rows - 3)]]
+rdiags b = [ [board b ! (x + i, y + i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [1..(rows - 3)]]
 
 ldiags :: Board -> [[Color]]
-ldiags (Board board _ _ _) = [ [board ! (x + i, y - i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [4..rows]]
+ldiags b = [ [board b ! (x + i, y - i) | i <- [0..3]] | x <- [1..(columns - 3)], y <- [4..rows]]
 
 -- Check if a player of particular color has won
 checkWin :: Board -> Bool
@@ -119,11 +132,12 @@ instance GamePosition Board where
   moves b = map (makeMove b) $ possibleMoves b
 
   static :: Board -> Int
-  static b@(Board board h c k) = if (checkWin b) then -100 else (valuation b) - (valuation (Board board h (opp c) k))
+  static b = if (checkWin b) then -100 else (valuation b) - (valuation b { color = opp (color b) })
 
 instance Show Board where
   show :: Board -> String
-  show (Board b _ _ _) = let strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
-                             rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
-                             output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
-                         in rowSep ++ output ++ rowSep
+  show board' = let b = board board'
+                    strBoard = [[if z == Red then "R" else if z == Yellow then "Y" else " " | x <- [1..columns], let z = b ! (x, y)] | y <- [rows,(rows-1)..1]]
+                    rowSep = "\n" ++ (concat $ replicate columns "+---") ++ "+\n"
+                    output = intercalate rowSep $ map (\x ->"| " ++ (intercalate " | " x) ++ " |") strBoard
+                in rowSep ++ output ++ rowSep

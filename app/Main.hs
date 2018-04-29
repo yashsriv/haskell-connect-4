@@ -2,8 +2,8 @@ module Main where
 
 import System.Exit
 
-import Graphics.Gloss
-import Graphics.Gloss.Interface.IO.Game
+import Graphics.Gloss hiding (color)
+import Graphics.Gloss.Interface.IO.Game hiding (color)
 
 import AI (GamePosition)
 import Board hiding (Color)
@@ -11,28 +11,28 @@ import GraphicsBoard (drawBoard)
 import Player
 
 moveFunc :: (Player Column Board) -> (Player Column Board) -> Event -> Board -> IO Board
-moveFunc player1 player2 (EventKey (MouseButton LeftButton) Up _ (coordX, _)) b@(Board board h c Empty) = let col = ceiling $ (coordX + 350) / 100
+moveFunc player1 player2 (EventKey (MouseButton LeftButton) Up _ (coordX, _)) b@Board{ winner = Empty } = let col = ceiling $ (coordX + 350) / 100
                                                                                                               moves = possibleMoves b
                                                                                                           in if null moves
-                                                                                                             then return (Board board h c Both)  -- draw
-                                                                                                             else moveFunc' moves c player1 player2 b col
-moveFunc player1 player2 (EventKey (MouseButton LeftButton) Up _ _) _ = exitSuccess
-moveFunc player1 player2 (EventKey (SpecialKey KeyEsc) Up _ _) _      = die "Game Aborted"
-moveFunc player1 player2 (EventKey (Char 'q') Up _ _) _               = die "Game Aborted"
-moveFunc player1 player2 _ b                                          = return b
+                                                                                                             then return b { winner = Both }  -- draw
+                                                                                                             else moveFunc' moves player1 player2 b col
+moveFunc _ _ (EventKey (MouseButton LeftButton) Up _ _) _ = exitSuccess
+moveFunc _ _ (EventKey (SpecialKey KeyEsc) Up _ _) _      = die "Game Aborted"
+moveFunc _ _ (EventKey (Char 'q') Up _ _) _               = die "Game Aborted"
+moveFunc _ _ _ b                                          = return b
 
-moveFunc' moves c player1 player2 b col =
+moveFunc' moves player1 player2 b col =
     do
-        move <- if (c == Red) then (player1 moves b (Just col)) else (player2 moves b (Just col))
-        let nBoard@(Board board h c _) = makeMove b move
+        let player = if (color b == Red) then player1 else player2
+        move <- player moves b (Just col)
+        let nBoard = makeMove b move
             hasWon = checkWin nBoard
         if hasWon
-        then return (Board board h c (opp c))
+        then return nBoard { winner = color b }
         else return nBoard
 
 timeFunc :: Float -> Board -> IO Board
 timeFunc _ b = return b
-
 
 window :: Display
 window = InWindow "Connect 4 !!" (700, 600) (10, 10)
