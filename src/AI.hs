@@ -29,12 +29,12 @@ negmax depth b gen
  | depth == 0     = ((Nothing, static b), gen)
  | null (moves b) = ((Nothing, static b), gen)
  | otherwise =
-     let posMoves = moves b                      -- All possible moves
-         (gens, gen') = genRandom gen (length posMoves) []                      -- Generate a list of random generators - one to pass down to each move
-         results = zipWith (\g mov -> negmax (depth - 1) mov g) gens (moves b)  -- zipWith is used to pass corresponding generator to corresponding move
-         zipped = zip [0..] results              -- Associate move index with the results (i.e. playing which move will result in this)
-         bests = foldl gatherMax [] zipped       -- Obtain subset of best scores
-         (best, gen'') = randomPick bests gen'   -- Randomly pick any move of the best moves
-         (moveIndex, ((_, score), _)) = best     -- Extract the move index and the score associated with the move
-     in ((Just moveIndex, negate score), gen'')  -- Return move index, negative of the score and the modified generator
+     let posMoves      = moves b                      -- All possible moves
+         (gens, gen')  = genRandom gen (length posMoves) []                      -- Generate a list of random generators - one to pass down to each move
+         results       = zipWith (\g mov -> negmax (depth - 1) mov g) gens (moves b)  -- zipWith is used to pass corresponding generator to corresponding move
+         zipped        = zip [0..] results          -- Associate move index with the results (i.e. playing which move will result in this)
+         bests         = foldl gatherMax [] zipped  -- Obtain subset of best scores
+         (best, gen'') = randomPick bests gen'      -- Randomly pick any move of the best moves
+         (moveIndex, ((_, score), _)) = best        -- Extract the move index and the score associated with the move
+     in ((Just moveIndex, negate score), gen'')     -- Return move index, negative of the score and the modified generator
 

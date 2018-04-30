@@ -56,11 +56,14 @@ possibleMoves b
 
 -- Update the Board
 makeMove :: Board -> Column -> Board
-makeMove b@(Board board heights c _) col = let posMoves = possibleMoves b
-                                               curHeight = heights ! col
-                                               nBoard = Map.insert (col, curHeight + 1) c board
-                                               nHeights = Map.insert col (curHeight + 1) heights
-                                           in if (col `elem` posMoves) then b { board = nBoard, heights = nHeights, color = opp c } else b
+makeMove b@Board{ heights = heights', color = c, board = board' } col =
+  let posMoves = possibleMoves b
+      curHeight = heights' ! col
+      nBoard = Map.insert (col, curHeight + 1) c board'
+      nHeights = Map.insert col (curHeight + 1) heights'
+  in if (col `elem` posMoves)
+     then b { board = nBoard, heights = nHeights, color = opp c }
+     else b
 
 opp :: Color -> Color
 opp c
@@ -87,7 +90,7 @@ checkWin board = or [f board | f <- [checkWinCol, checkWinRow, checkWinDiagRight
 -- check if any quad exists such that all elements of a quad are of the opposite color.
 -- If yes then the other player won and reached this state
 checkWin' :: (Board -> [[Color]]) -> Board -> Bool
-checkWin' f b@(Board board _ color _) = or $ map (and . map ((==) (opp color))) $ f b
+checkWin' f b = or $ map (and . map ((==) (opp $ color b))) $ f b
 
 checkWinCol :: Board -> Bool
 checkWinCol = checkWin' verticals
@@ -107,7 +110,7 @@ valuation board = sum [f board | f <- [valuationCol, valuationRow, valuationDiag
 
 -- Calculate score of each quad set and return the sum
 valuation' :: (Board -> [[Color]]) -> Board -> Int
-valuation' f b@(Board board _ color _) = sum $ map (scoreQuad color) $ f b
+valuation' f b = sum $ map (scoreQuad $ color b) $ f b
 
 valuationCol :: Board -> Int
 valuationCol = valuation' verticals
